@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: jboss/keycloak:latest
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=MySecretPassword
+      - DB_USER=keycloak
+      - DB_PASSWORD=MySecretPassword
+      - DB_ADDR=iam-db
+      - DB_DATABASE=keycloak
+      - DB_VENDOR=postgres
+      - DB_PORT=5432
+    ports:
+      - "6080:8080"
+    networks:
+      - keycloak_network
+    depends_on:
+      iam-db:
+        condition: service_healthy
+
+  iam-db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=MySecretPassword
+    volumes:
+      - iam_db_vol:/var/lib/postgresql/data
+    networks:
+      - keycloak_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "${DB_NAME}", "-U", "${DB_USER}"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=haccp
+      - RABBITMQ_DEFAULT_PASS=MySecretPassword
+    volumes:
+      - rabbit_data_vol:/var/lib/rabbitmq
+      - rabbitmq/definitions.json:/opt/definitions.json:ro
+    ports:
+      - "15671:15672"
+
+networks:
+  keycloak_network:
+
+volumes:
+  rabbit_data_vol:
+    external: false
+  iam_db_vol:
+    external: false

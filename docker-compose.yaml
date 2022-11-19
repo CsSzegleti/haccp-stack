@@ -46,6 +46,15 @@ services:
       - rabbitmq/definitions.json:/opt/definitions.json:ro
     ports:
       - "15671:15672"
+  
+  redis:
+    image: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_vol:/data
 
 networks:
   keycloak_network:
@@ -54,4 +63,6 @@ volumes:
   rabbit_data_vol:
     external: false
   iam_db_vol:
+    external: false
+  redis_vol:
     external: false

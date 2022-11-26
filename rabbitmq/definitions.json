@@ -1,0 +1,69 @@
+{
+  "rabbit_version": "3.11.3",
+  "rabbitmq_version": "3.11.3",
+  "product_name": "RabbitMQ",
+  "product_version": "3.11.3",
+  "users": [
+    {
+      "name": "haccp",
+      "password_hash": "uvu3HDalv62IWu9A3dw3UhQ3DVEYLa4MzZD/lAUW+Xu3yyHX",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"],
+      "limits": {}
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    {
+      "user": "haccp",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "internal_cluster_id",
+      "value": "rabbitmq-cluster-id-e53Mx1J_Kk9UKm-YgZ54mQ"
+    }
+  ],
+  "policies": [],
+  "queues": [
+    {
+      "name": "file.upload.request",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "file.upload.response",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    }
+  ],
+  "exchanges": [],
+  "bindings": [
+    {
+      "source": "amq.topic",
+      "vhost": "/",
+      "destination": "file.upload.request",
+      "destination_type": "queue",
+      "routing_key": "file.upload.request",
+      "arguments": {}
+    },
+    {
+      "source": "amq.topic",
+      "vhost": "/",
+      "destination": "file.upload.response",
+      "destination_type": "queue",
+      "routing_key": "file.upload.response",
+      "arguments": {}
+    }
+  ]
+}

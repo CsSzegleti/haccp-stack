@@ -30,12 +30,21 @@ services:
     networks:
       - keycloak_network
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "${DB_NAME}", "-U", "${DB_USER}"]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-q",
+          "-d",
+          "${DB_NAME}",
+          "-U",
+          "${DB_USER}"
+        ]
       interval: 20s
       timeout: 5s
       retries: 5
       start_period: 5s
-  
+
   file-manager-db:
     image: postgres:latest
     environment:
@@ -45,10 +54,19 @@ services:
       - fm_db_vol:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    # networks:
-    #   - file_manager_network
+    networks:
+      - file_manager_network
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "${DB_NAME}", "-U", "${DB_USER}"]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-q",
+          "-d",
+          "${DB_NAME}",
+          "-U",
+          "${DB_USER}"
+        ]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -61,22 +79,83 @@ services:
       - RABBITMQ_DEFAULT_PASS=MySecretPassword
     volumes:
       - rabbit_data_vol:/var/lib/rabbitmq
-      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json 
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
     ports:
       - "5671:5672"
       - "15671:15672"
-  
-  redis:
+
+  url-cache:
     image: redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     ports:
       - '6379:6379'
     volumes:
       - redis_vol:/data
+    networks:
+      - file_manager_network
 
+  cache:
+    image: redis
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - cache_vol:/data
+
+  mongo:
+    image: mongo
+    volumes:
+      - mongo_vol:/data/db
+    networks:
+      - graylog_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elastic_vol:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks:
+      - graylog_network
+
+  graylog:
+    image: graylog/graylog:4.2
+    environment:
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      # pass: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 --  /docker-entrypoint.sh
+    networks:
+      - graylog_network
+    depends_on:
+      - mongo
+      - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP
+      - 1514:1514
+      # Syslog UDP
+      - 1514:1514/udp
+      # GELF TCP
+      - 12201:12201
+      # GELF UDP
+      - 12201:12201/udp
 
 networks:
   keycloak_network:
+  graylog_network:
+  file_manager_network:
+
 
 volumes:
   file_manager_vol:
@@ -88,4 +167,10 @@ volumes:
   iam_db_vol:
     external: false
   redis_vol:
+    external: false
+  mongo_vol:
+    external: false
+  cache_vol:
+    external: false
+  elastic_vol:
     external: false

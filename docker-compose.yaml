@@ -36,6 +36,24 @@ services:
       retries: 5
       start_period: 5s
   
+  file-manager-db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=file
+      - POSTGRES_PASSWORD=MySecretPassword
+    volumes:
+      - fm_db_vol:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # networks:
+    #   - file_manager_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "${DB_NAME}", "-U", "${DB_USER}"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   rabbitmq:
     image: rabbitmq:3-management
     environment:
@@ -43,23 +61,28 @@ services:
       - RABBITMQ_DEFAULT_PASS=MySecretPassword
     volumes:
       - rabbit_data_vol:/var/lib/rabbitmq
-      - rabbitmq/definitions.json:/opt/definitions.json:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json 
     ports:
+      - "5671:5672"
       - "15671:15672"
   
   redis:
     image: redis
     command: ["redis-server", "--appendonly", "yes"]
-    restart: always
     ports:
       - '6379:6379'
     volumes:
       - redis_vol:/data
 
+
 networks:
   keycloak_network:
 
 volumes:
+  file_manager_vol:
+    external: false
+  fm_db_vol:
+    external: false
   rabbit_data_vol:
     external: false
   iam_db_vol:

@@ -5,11 +5,11 @@ services:
     image: jboss/keycloak:latest
     environment:
       - KEYCLOAK_USER=admin
-      - KEYCLOAK_PASSWORD=MySecretPassword
-      - DB_USER=keycloak
-      - DB_PASSWORD=MySecretPassword
+      - KEYCLOAK_PASSWORD=password
+      - DB_USER=iam
+      - DB_PASSWORD=password
       - DB_ADDR=iam-db
-      - DB_DATABASE=keycloak
+      - DB_DATABASE=iam
       - DB_VENDOR=postgres
       - DB_PORT=5432
     ports:
@@ -20,15 +20,37 @@ services:
       iam-db:
         condition: service_healthy
 
-  iam-db:
+  inventory-db:
+    image: postgres
+    restart: on-failure
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5430:5432"
+    healthcheck:
+      test: curl -s https://localhost:5432 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - inventroy_db_vol:/var/lib/postgresql/data
+      - ./init-db/init-haccp-inventory-db.sh:/docker-entrypoint-initdb.d/init-haccp-inventory-db.sh
+
+  menu-db:
     image: postgres:latest
     environment:
-      - POSTGRES_USER=keycloak
-      - POSTGRES_PASSWORD=MySecretPassword
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
-      - iam_db_vol:/var/lib/postgresql/data
-    networks:
-      - keycloak_network
+      - ./init-db/init-haccp-menu-db.sh:/docker-entrypoint-initdb.d/init-haccp-menu-db.sh"
+      - menu_db_vol:/var/lib/postgresql/data
+    ports:
+      - 5431:5432
     healthcheck:
       test:
         [
@@ -44,6 +66,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  iam-db:
+    image: postgres
+    restart: on-failure
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: curl -s https://localhost:5432 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - iam_db_vol:/var/lib/postgresql/data
+      - ./init-db/init-iam-db.sh:/docker-entrypoint-initdb.d/init-iam-db.sh
+    networks:
+      - keycloak_network
 
   file-manager-db:
     image: postgres:latest
@@ -158,7 +199,9 @@ networks:
 
 
 volumes:
-  file_manager_vol:
+  inventroy_db_vol:
+    external: false
+  menu_db_vol:
     external: false
   fm_db_vol:
     external: false
